@@ -270,7 +270,7 @@ b4: Option[Boolean]`
 | 0 | 111830 kb | 111732 kb |
 | 1 | 113230 kb | 112418 kb |
 | 2 | 112626 kb | 112325 kb |
-| 3 | 112698 kb | kb 112315 |
+| 3 | 112698 kb | 112315 kb |
 | 4 | 113117 kb | 112715 kb |
 
 **The package fields**
@@ -360,7 +360,7 @@ Also 500 thousand elements, but the strings have length 5. The data hasn't repet
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
-| 0 | 95091 kb | kb 94141 |
+| 0 | 95091 kb | 94141 kb  |
 | 1 | 86867 kb | 168425 kb |
 | 2 | 102367 kb | 259074 kb |
 | 3 | 86810 kb | 333071 kb |
@@ -370,8 +370,8 @@ Also 500 thousand elements, but the strings have length 5. The data hasn't repet
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
-| 0 | kb 105562 | 105562 kb |
-| 1 | 66527 kb | kb 105683 |
+| 0 | 105562 kb | 105562 kb |
+| 1 | 66527 kb | 105683 kb|
 | 2 | 66392 kb | 105669 kb |
 | 3 | 66423 kb | 105686 kb |
 | 4 | 66406 kb | 105686 kb |
@@ -442,7 +442,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 66468 kb | 66468 kb |
-| 1 | 66920 kb | kb 132920 |
+| 1 | 66920 kb | 132920 kb |
 | 2 | 62015 kb | 193819 kb |
 | 3 | 70686 kb | 264037 kb |
 | 4 | 62875 kb | 326444 kb |
