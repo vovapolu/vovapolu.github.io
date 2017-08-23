@@ -233,6 +233,7 @@ There were 4 benchmarks:
 Memory usage of 500 thousand `case classes` and generated classes was compared. Each of them consisted of the following fields: `i: Int, b: Boolean, s: String`.
 
 **`case class`**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 54659 kb | 54571 kb |
@@ -242,6 +243,7 @@ Memory usage of 500 thousand `case classes` and generated classes was compared. 
 | 4 | 54691 kb | 54595 kb |
 
 **Generated class**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 55032 kb | 54934 kb |
@@ -262,6 +264,7 @@ b3: Option[Boolean],
 b4: Option[Boolean]`
 
 **`case class`**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 111830 kb | 111732 kb |
@@ -271,6 +274,7 @@ b4: Option[Boolean]`
 | 4 | 113117 kb | 112715 kb |
 
 **The package fields**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 40399 kb | 40281 kb |
@@ -288,6 +292,7 @@ Let's finally proceed to the most interesting and demonstrative memory benchmark
 500 thousand elements, the 2-length strings of digits and letters. The size of all different combinations of such strings and `Boolean` is much smaller than the size of the collection, so there were many duplicates. 
 
 **`case class`**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 45174 kb | 50249 kb |
@@ -297,6 +302,7 @@ Let's finally proceed to the most interesting and demonstrative memory benchmark
 | 4 | 46980 kb | 50646 kb |
 
 **Strong memoization**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 11831 kb | 11537 kb |
@@ -306,6 +312,7 @@ Let's finally proceed to the most interesting and demonstrative memory benchmark
 | 4 | 11729 kb | 11601 kb |
 
 **Strong memoization with string interning**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 11733 kb | 11732 kb |
@@ -315,6 +322,7 @@ Let's finally proceed to the most interesting and demonstrative memory benchmark
 | 4 | 11728 kb | 11753 kb |
 
 **Weak memoization**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 11666 kb | 11659 kb |
@@ -329,6 +337,7 @@ Memoization is doing its job. All repetitions in data are added to the cache and
 Also 500 thousand elements, but the strings have length 5. The data hasn't repetitions now. 
 
 **`case class`**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 54937 kb | 54938 kb |
@@ -338,6 +347,7 @@ Also 500 thousand elements, but the strings have length 5. The data hasn't repet
 | 4 | 54667 kb | 53191 kb |
 
 **Strong memoization**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 78619 kb | 77984 kb |
@@ -347,6 +357,7 @@ Also 500 thousand elements, but the strings have length 5. The data hasn't repet
 | 4 | 74882 kb | 336093 kb |
 
 **Strong memoization with string interning**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 95091 kb | kb 94141 |
@@ -356,6 +367,7 @@ Also 500 thousand elements, but the strings have length 5. The data hasn't repet
 | 4 | 86753 kb | 407689 kb |
 
 **Weak memoization**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | kb 105562 | 105562 kb |
@@ -372,6 +384,7 @@ In this benchmark after creating 500 thousand instances only 20000 references to
 ##### Data with repetitions
 
 **`case class`**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 1914 kb | 1923 kb |
@@ -381,6 +394,7 @@ In this benchmark after creating 500 thousand instances only 20000 references to
 | 4 | 1859 kb | 1863 kb |
 
 **Strong memoization**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 1662 kb | 1663 kb |
@@ -390,6 +404,7 @@ In this benchmark after creating 500 thousand instances only 20000 references to
 | 4 | 468 kb | 1347 kb |
 
 **Strong memoization with string interning**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 1347 kb | 1348 kb |
@@ -399,6 +414,7 @@ In this benchmark after creating 500 thousand instances only 20000 references to
 | 4 | 468 kb | 1331 kb |
 
 **Weak memoization**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 1583 kb | 1583 kb |
@@ -412,6 +428,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 ##### Data without repetition
 
 **`case class`**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 2299 kb | 2299 kb |
@@ -421,6 +438,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 | 4 | 2187 kb | 2341 kb |
 
 **Strong memoization**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 66468 kb | 66468 kb |
@@ -430,6 +448,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 | 4 | 62875 kb | 326444 kb |
 
 **Strong memoization with string interning**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 82753 kb | 82754 kb |
@@ -439,6 +458,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 | 4 | 75296 kb | 403948 kb |
 
 **Weak memoization**
+
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
 | 0 | 41861 kb | 41861 kb |
