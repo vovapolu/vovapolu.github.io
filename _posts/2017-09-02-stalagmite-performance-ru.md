@@ -1,4 +1,10 @@
-# Stalagmite и его скорость работы
+---
+layout: post
+title:  "Stalagmite и его скорость работы"
+date:   2017-09-02 17:20:01 +0300
+categories: scala stalagmite perf
+---
+
 Это лето я участвовал в проекте [Google Summer of Code](https://summerofcode.withgoogle.com/projects/#4661695229198336) в организации [Scala](https://www.scala-lang.org/). Моей задачей являлось написание библиотеки ([**stalagmite**](https://github.com/fommil/stalagmite)), которая при помощи [scala.meta](http://scalameta.org/) могла бы генерировать *эффективную* и настраиваемую замену обычным [`case class`](http://docs.scala-lang.org/tour/case-classes.html)ам с некоторыми удобными оптимизациями. Разберем подробнее это описание:
 - **Эффективность**, то есть сравнимая скорость работы для функций, уже представленных в `case class`е, и более-менее быстрая реализация дополнительных
 - **Настраиваемость** -- возможность включать и отключать различные режимы генерации кода

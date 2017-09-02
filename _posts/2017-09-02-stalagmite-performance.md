@@ -1,4 +1,12 @@
-# Stalagmite and its speed
+---
+layout: post
+title:  "Stalagmite and its speed"
+date:   2017-09-02 17:20:01 +0300
+categories: scala stalagmite perf
+---
+
+*Russian version of this post is [here]({% post_url 2017-09-02-stalagmite-performance-ru %})*
+
 This summer I participated in the project [Google Summer of Code](https://summerofcode.withgoogle.com/projects/#4661695229198336) in the [Scala](https://www.scala-lang.org/) organization. My task was writing a library ([**stalagmite**](https://github.com/fommil/stalagmite)), which could generate by [scala.meta](http://scalameta.org/) *effective* and customizable replacement of conventional [`case classes`](http://docs.scala-lang.org/tour/case-classes.html) with some convenient optimizations. Let's analyze this description: 
 - **Effective**, that is comparable speed of functions already provided in the `case class', and more or less fast implementation of additional ones
 - **Customizable** -- the ability to enable and disable various modes of code generation
