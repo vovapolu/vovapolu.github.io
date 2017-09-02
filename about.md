@@ -4,5 +4,5 @@ title: About
 permalink: /about/
 ---
 
-[IN RECONSTRUCTION]
+[UNDER CONSTRUCTION]
 (no time to explain)
