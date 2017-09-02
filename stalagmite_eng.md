@@ -13,9 +13,13 @@ Currently the project provides 3 main operation mods together with a set of smal
  - **[Memoisation](https://ru.wikipedia.org/wiki/%D0%9C%D0%B5%D0%BC%D0%BE%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F), interning**, this technique disallows to duplicate objects that are equal *by value*, thus keeps in memory only one object and multiple references to it. It reduces the memory usage and time for comparing objects (object equality is equivalent to reference equality), but the creation of each object requires more resources. Stalagmite supports the interning of both the class and the fields inside it. There are also two sub-mods: *weak* and *strong* memoiastion. The first mode stores the class objects within a pool using a *weak reference*, allowing the garbage collector to remove unused instances, the second mode keeps the normal link, and prohibits removing from memory objects, that get to the pool. 
  - **"Packaging" the class fields** (in the project called `heap optimization`), this mode reduces the amount of memory for each instance of the class using the `Boolean` and `Option[AnyVal]` (for primitives) "packaging" in the bitmask and converting fields of type `Option[T]` to the type `T` that accepts `null` for the original case of `None`. 
 
+Generated classes with these mods also takes into account important property of immutability. Memoisation and fields packing implicitly use it. 
+
 Work on the library is not finished yet, many problems and ideas are documented in the [repository](https://github.com/fommil/stalagmite) `Issues`. Visit it if you are interested in the fate of the project. 
 
 ## Benchmarks
+*Next there will be the long description of the benchmarks. For the impatient and those who want to learn only the results of performance testing there's a **TL;DR** section at the end*
+
 ### Working time
 First, let's examine the time benchmarks, that used the [JMH](http://openjdk.java.net/projects/code-tools/jmh/).
 Each of them represents the applying of some method to a collection of 5000 tuples or instances of a certain class. Number of such applyings in a second was counted for collection on average on each of the 15 threads. The results are given for processor `Intel Core i5-4210U @ 1.70 GHz`.
@@ -23,15 +27,11 @@ Each of them represents the applying of some method to a collection of 5000 tupl
 I will use the following notation for classes used in benchmarks: 
 - `caseClass` -- normal `case class`
 - `caseClassMeta` -- macro-generated class that duplicates the functionality of `caseClass`
-- `caseClassSpec` -- specialization for `caseClassMeta`, essentially the same class, written by "hands"
 - `memoisedCaseClass` -- also an ordinary `case class`, created for comparison with memorization verison
 - `memoisedMeta` -- the generated class with `strong memoisation`
-- `memoisedSpec` -- specialization for `memoisedMeta`
 - `memoisedWeak` -- the generated class with `weak memoisation`
-- `memoisedWeakSpec` -- specialization for `memoisedWeak`
 - `optimizeHeapCaseClass` -- `case class` for comparison with `heap optimization`
 - `optimizeHeapMeta` -- the generated class with `heap optimization`
-- `optimizeHeapSpec` -- specialization for `optimizeHeapMeta`
 
 *TL;DR* There are three groups of classes that were used during testing. `caseClass.*` tested duplication of `case classes`, `memoised.*` tested memorization, `optimizeHeap*` -- fields packaging. `*caseClass` served as the baselines for each group, and were simple `case classes`. 
 
@@ -42,39 +42,28 @@ Collection consisted of tuples with fields for creating classes. For each tuple 
 
 | Class | Result |
 | - | - |
-| ` ApplyBenchmark.caseClass ` | ` 18632.307 ± 648.851 ops/s ` |
-| ` ApplyBenchmark.caseClassMeta ` | ` 13829.301 ± 617.666 ops/s ` |
-| ` ApplyBenchmark.caseClassSpec ` | ` 13872.351 ± 359.252 ops/s ` |
-| ` ApplyBenchmark.memoisedCaseClass ` | ` 19690.822 ± 1168.568 ops/s ` |
-| ` ApplyBenchmark.memoisedMeta ` | ` 2394.803 ± 35.590 ops/s ` |
-| ` ApplyBenchmark.memoisedSpec ` | ` 1424.101 ± 11.812 ops/s ` |
-| ` ApplyBenchmark.memoisedWeakSpec ` | ` 3614.672 ± 23.954 ops/s ` |
-| ` ApplyBenchmark.optimizeHeapCaseClass ` | ` 19624.756 ± 585.963 ops/s ` |
-| ` ApplyBenchmark.optimizeHeapMeta ` | ` 3778.145 ± 131.763 ops/s ` |
-| ` ApplyBenchmark.optimizeHeapSpec ` | ` 3890.264 ± 27.735 ops/s ` |
+| ` ApplyBenchmark.caseClass ` | ` 19136.554 ± 637.993  ops/s ` |
+| ` ApplyBenchmark.caseClassMeta ` | ` 18331.622 ± 510.110  ops/s ` |
+| ` ApplyBenchmark.memoisedCaseClass ` | ` 20007.336 ± 276.490  ops/s ` |
+| ` ApplyBenchmark.memoisedMeta ` | ` 2560.862 ±  30.396  ops/s ` |
+| ` ApplyBenchmark.memoisedMetaWeak ` | ` 3714.472 ±  21.630  ops/s ` |
+| ` ApplyBenchmark.optimizeHeapCaseClass ` | ` 19397.820 ± 509.561  ops/s ` |
+| ` ApplyBenchmark.optimizeHeapMeta ` | ` 3949.541 ±  54.173  ops/s ` |
 
-One of most insteresting benchmarks, it affects almost half of the remaining. Creating an instance of the class in any mode of generation works longer: `memoised` and `optimizeHeap` modes have the overhead of memoization and packaging fields, `caseClass` mode is slower for a different reason. In the generated method `apply` we can see this:
-```scala
-val created = new Foo(...)
-created.synchronized(created)
-```
-Synchronized publication requires some time, therefore the entire method `apply` runs longer than a normal call to the constructor using `new`. Such publication is necessary because of the mutable fields in the class. They appear because of serialization methods `writeObject` and `readObject`, the latter of which requires access to direct writes to the fields in the class. This feature also affects two other modes: `memoised` and `optimizedHeap`, but not so visible compared to other not fast operations.
+`memoised` and `optimizeHeap` modes have the overhead of memoization and fields packaging, thus work slower than regular `case class`. `caseClass` shows the same speed. as `case class`.
 
 #### copy
 For each class instance in the collection 2 copies with different values in one of the two fields were created.
 
 | Class | Result |
 | - | - |
-| ` CopyBenchmark.caseClass ` | ` 5124.416 ± 177.984 ops/s ` |
-| ` CopyBenchmark.caseClassMeta ` | ` 4497.064 ± 207.847 ops/s ` |
-| ` CopyBenchmark.caseClassSpec ` | ` 4309.922 ± 242.249 ops/s ` |
-| ` CopyBenchmark.memoisedCaseClass ` | ` 5609.002 ± 489.060 ops/s ` |
-| ` CopyBenchmark.memoisedMeta ` | ` 839.745 ± 18.016 ops/s ` |
-| ` CopyBenchmark.memoisedSpec ` | ` 595.055 ± 11.876 ops/s ` |
-| ` CopyBenchmark.memoisedWeakSpec ` | ` 998.883 ± 281.927 ops/s ` |
-| ` CopyBenchmark.optimizeHeapCaseClass ` | ` 6654.323 ± 584.539 ops/s ` |
-| ` CopyBenchmark.optimizeHeapMeta ` | ` 868.173 ± 43.038 ops/s ` |
-| ` CopyBenchmark.optimizeHeapSpec ` | ` 878.649 ± 70.195 ops/s ` |
+| ` CopyBenchmark.caseClass ` | ` 5080.050 ± 284.304  ops/s ` |
+| ` CopyBenchmark.caseClassMeta ` | ` 5432.313 ± 336.334  ops/s ` |
+| ` CopyBenchmark.memoisedCaseClass ` | ` 4998.074 ± 173.456  ops/s ` |
+| ` CopyBenchmark.memoisedMeta ` | ` 853.461 ±   8.121  ops/s ` |
+| ` CopyBenchmark.memoisedMetaWeak ` | ` 1159.225 ±  63.359  ops/s ` |
+| ` CopyBenchmark.optimizeHeapCaseClass ` | ` 6899.622 ± 129.428  ops/s ` |
+| ` CopyBenchmark.optimizeHeapMeta ` | ` 959.581 ±  11.433  ops/s ` |
 
 The situation is similar to the previous benchmark. Method `copy` just creates a new object using `apply`. 
 
@@ -83,12 +72,10 @@ Each field of a class instance in the collection was read.
 
 | Class | Result |
 | - | - |
-| ` FieldAccessBenchmark.caseClass ` | ` 14372.217 ± 652.541 ops/s ` |
-| ` FieldAccessBenchmark.caseClassMeta ` | ` 16281.845 ± 401.557 ops/s ` |
-| ` FieldAccessBenchmark.caseClassSpec ` | ` 14692.999 ± 798.767 ops/s ` |
-| ` FieldAccessBenchmark.optimizeHeapCaseClass ` | ` 21939.659 ± 611.733 ops/s ` |
-| ` FieldAccessBenchmark.optimizeHeapMeta ` | ` 4214.009 ± 164.563 ops/s ` |
-| ` FieldAccessBenchmark.optimizeHeapSpec ` | ` 4105.272 ± 122.361 ops/s ` |
+| ` FieldAccessBenchmark.caseClass ` | ` 15390.926 ± 122.415  ops/s ` |
+| ` FieldAccessBenchmark.caseClassMeta ` | ` 15433.422 ± 254.224  ops/s ` |
+| ` FieldAccessBenchmark.optimizeHeapCaseClass ` | ` 22975.564 ± 803.286  ops/s ` |
+| ` FieldAccessBenchmark.optimizeHeapMeta ` | ` 4535.168 ±  50.179  ops/s ` |
 
 `caseClass` mode doesn't differ from `case class`, field access method returns the actual field from the class. `optimizeHeap` mode performs the "unpacking" of the fields while reading, so working time is longer. `memoised` mode wasn't included, because it's equivalent to `caseClass` in this context. 
 
@@ -99,27 +86,19 @@ For each class instance methods `.hashCode'and `.toString` were called.
 | - | - |
 | ` HashCodeBenchmark.caseClass ` | ` 11307.343 ± 1278.621 ops/s ` |
 | ` HashCodeBenchmark.caseClassMeta ` | ` 12106.911 ± 263.225 ops/s ` |
-| ` HashCodeBenchmark.caseClassSpec ` | ` 12020.874 ± 852.259 ops/s ` |
 | ` HashCodeBenchmark.memoisedCaseClass ` | ` 16266.437 ± 292.010 ops/s ` |
 | ` HashCodeBenchmark.memoisedMeta ` | ` 24262.046 ± 1876.971 ops/s ` |
-| ` HashCodeBenchmark.memoisedSpec ` | ` 19334.574 ± 568.209 ops/s ` |
-| ` HashCodeBenchmark.memoisedWeakSpec ` | ` 19328.080 ± 1254.363 ops/s ` |
 | ` HashCodeBenchmark.optimizeHeapCaseClass ` | ` 4208.655 ± 323.614 ops/s ` |
 | ` HashCodeBenchmark.optimizeHeapMeta ` | ` 3078.390 ± 210.247 ops/s ` |
-| ` HashCodeBenchmark.optimizeHeapSpec ` | ` 3093.886 ± 156.744 ops/s ` |
 
 | Class | Result |
 | - | - |
 | ` ToStringBenchmark.caseClass ` | ` 1145.058 ± 34.190 ops/s ` |
 | ` ToStringBenchmark.caseClassMeta ` | ` 1296.309 ± 22.632 ops/s ` |
-| ` ToStringBenchmark.caseClassSpec ` | ` 1058.597 ± 53.223 ops/s ` |
 | ` ToStringBenchmark.memoisedCaseClass ` | ` 1439.810 ± 106.486 ops/s ` |
 | ` ToStringBenchmark.memoisedMeta ` | ` 26745.501 ± 1026.738 ops/s ` |
-| ` ToStringBenchmark.memoisedSpec ` | ` 39654.770 ± 1341.026 ops/s ` |
-| ` ToStringBenchmark.memoisedWeakSpec ` | ` 26123.717 ± 1148.831 ops/s ` |
 | ` ToStringBenchmark.optimizeHeapCaseClass ` | ` 548.055 ± 98.772 ops/s ` |
 | ` ToStringBenchmark.optimizeHeapMeta ` | ` 646.945 ± 29.493 ops/s ` |
-| ` ToStringBenchmark.optimizeHeapSpec ` | ` 544.637 ± 11.694 ops/s ` |
 
 For `caseClass` and `optimizeHeap` modes the situation is similar as in the field access. Methods `.hashCode` and `.toString` get fields of the class for building hashes and strings, though still doing a lot of other work, so the difference is small. `memoised` mode works faster than `case class` baseline because of the special settings: `memoisedHashCode` and `memoisedToString`. They save the values of the two methods, and don't count them many times. 
 
@@ -130,7 +109,6 @@ This benchmark tested method `productElement`.
 | - | - |
 | ` ProductElementBenchmark.caseClass ` | ` 13921.991 ± 631.164 ops/s ` |
 | ` ProductElementBenchmark.caseClassMeta ` | ` 13871.084 ± 1241.714 ops/s ` |
-| ` ProductElementBenchmark.caseClassSpec ` | ` 14971.465 ± 383.705 ops/s ` |
 | ` ProductElementBenchmark.optimizeHeapCaseClass ` | ` 21984.665 ± 636.940 ops/s ` |
 | ` ProductElementBenchmark.optimizeHeapMeta ` | ` 4305.256 ± 73.872 ops/s ` |
 
@@ -141,16 +119,13 @@ The entire collection of class instances was serialized and then deserialized.
 
 | Class | Result |
 | - | - |
-| ` SerializationBenchmark.caseClass ` | ` 191.916 ± 26.162 ops/s ` |
-| ` SerializationBenchmark.caseClassMeta ` | ` 175.371 ± 35.075 ops/s ` |
-| ` SerializationBenchmark.caseClassSpec ` | ` 160.278 ± 21.529 ops/s ` |
-| ` SerializationBenchmark.memoisedCaseClass ` | ` 251.393 ± 25.233 ops/s ` |
-| ` SerializationBenchmark.memoisedMeta ` | ` 356.072 ± 48.186 ops/s ` |
-| ` SerializationBenchmark.memoisedSpec ` | ` 287.126 ± 25.932 ops/s ` |
-| ` SerializationBenchmark.memoisedWeakSpec ` | ` 326.773 ± 53.973 ops/s ` |
-| ` SerializationBenchmark.optimizeHeapCaseClass ` | ` 88.670 ± 14.143 ops/s ` |
-| ` SerializationBenchmark.optimizeHeapMeta ` | ` 72.640 ± 6.432 ops/s ` |
-| ` SerializationBenchmark.optimizeHeapSpec ` | ` 72.776 ± 5.588 ops/s ` |
+| ` SerializationBenchmark.caseClass ` | ` 190.118 ± 19.615  ops/s ` |
+| ` SerializationBenchmark.caseClassMeta ` | ` 205.555 ± 29.683  ops/s ` |
+| ` SerializationBenchmark.memoisedCaseClass ` | ` 250.941 ± 34.648  ops/s ` |
+| ` SerializationBenchmark.memoisedMeta ` | ` 316.477 ± 30.002  ops/s ` |
+| ` SerializationBenchmark.memoisedMetaWeak ` | ` 338.591 ± 39.945  ops/s ` |
+| ` SerializationBenchmark.optimizeHeapCaseClass ` | ` 93.594 ± 18.978  ops/s ` |
+| ` SerializationBenchmark.optimizeHeapMeta ` | ` 66.927 ±  8.449  ops/s ` |
 
 There are almost no differences from `case class` baselines. Complex operations of writing and reading serialized data outshine quick fields accessing and objects creating. Good conclusion -- even difficult fields packing in `optimizeHeap` and memoization does not affect the objects serialization. 
 
@@ -159,14 +134,12 @@ Each class instance was pattern-matched.
 
 | Class | Result |
 | - | - |
-| ` UnapplyBenchmark.caseClass ` | ` 14562.991 ± 149.765 ops/s ` |
-| ` UnapplyBenchmark.caseClassMeta ` | ` 9696.198 ± 185.713 ops/s ` |
-| ` UnapplyBenchmark.caseClassSpec ` | ` 9343.658 ± 58.740 ops/s ` |
-| ` UnapplyBenchmark.optimizeHeapCaseClass ` | ` 20976.796 ± 843.153 ops/s ` |
-| ` UnapplyBenchmark.optimizeHeapMeta ` | ` 3833.284 ± 98.576 ops/s ` |
-| ` UnapplyBenchmark.optimizeHeapSpec ` | ` 3855.401 ± 25.975 ops/s ` |
+| ` UnapplyBenchmark.caseClass ` | ` 14816.202 ± 939.746  ops/s ` |
+| ` UnapplyBenchmark.caseClassMeta ` | ` 13392.518 ± 431.781  ops/s ` |
+| ` UnapplyBenchmark.optimizeHeapCaseClass ` | ` 23635.361 ± 238.981  ops/s ` |
+| ` UnapplyBenchmark.optimizeHeapMeta ` | ` 4082.947 ±  61.865  ops/s ` |
 
-`optimizeHeap` mode shows slow results due to the fields unpacking, `caseClass` mode also runs longer than usual `case class`, but the reason is not entirely clear. Perhaps the `case class` uses some optimizations for `unapply`, for example [name based extractors](https://hseeberger.wordpress.com/2013/10/04/name-based-extractors-in-scala-2-11/). 
+`optimizeHeap` mode shows slow results due to the fields unpacking, `caseClass` mode shows good performance regarding the `case class`. 
 
 The next group of benchmarks tested the generating mods features: methods to support `Shapeless` and speed of `.equals` with memoization. 
 
@@ -175,11 +148,10 @@ The next group of benchmarks tested the generating mods features: methods to sup
 
 | Class | Result |
 | - | - |
-| ` ShapelessBenchmark.caseClass ` | ` 8021.784 ± 440.019 ops/s ` |
-| ` ShapelessBenchmark.caseClassMeta ` | ` 5917.204 ± 60.514 ops/s ` |
-| ` ShapelessBenchmark.caseClassSpec ` | ` 5951.597 ± 45.581 ops/s ` |
+| ` ShapelessBenchmark.caseClass ` | ` 8406.639 ± 342.925  ops/s ` |
+| ` ShapelessBenchmark.caseClassMeta ` | ` 6653.700 ±  38.209  ops/s ` |
 
-Speed of `Shapeless` transfromation is closely linked with `apply` method, so the benchmark results are similar. 
+Generated class works slower. Reasons aren't clear, probably it's because of `Shapeless` macro-generation. 
 
 #### `.equals` within `Vector`
 This benchmark tested speed of `.equals` method in the case when data is placed in a `Vector`. A set of 1000000 random pairs of indices for comparisons was choosen. The indices were chosen with distance 10 or less and gradually increased, starting with 1. It allows to support data locality and data structure `Vector` is able to provide it. 
@@ -188,15 +160,11 @@ This benchmark tested speed of `.equals` method in the case when data is placed 
 | - | - |
 | ` EqualsVectorBenchmark.caseClass ` | ` 29.456 ± 1.851 ops/s ` |
 | ` EqualsVectorBenchmark.caseClassMeta ` | ` 30.252 ± 1.707 ops/s ` |
-| ` EqualsVectorBenchmark.caseClassSpec ` | ` 30.463 ± 1.450 ops/s ` |
 | ` EqualsVectorBenchmark.memoisedCaseClass ` | ` 36.041 ± 3.207 ops/s ` |
 | ` EqualsVectorBenchmark.memoisedMeta ` | ` 36.401 ± 1.061 ops/s ` |
-| ` EqualsVectorBenchmark.memoisedSpec ` | ` 36.426 ± 2.072 ops/s ` |
 | ` EqualsVectorBenchmark.memoisedWeak ` | ` 36.737 ± 2.372 ops/s ` |
-| ` EqualsVectorBenchmark.memoisedWeakSpec ` | ` 37.213 ± 2.130 ops/s ` |
 | ` EqualsVectorBenchmark.optimizeHeapCaseClass ` | ` 25.922 ± 1.398 ops/s ` |
 | ` EqualsVectorBenchmark.optimizeHeapMeta ` | ` 11.473 ± 0.828 ops/s ` |
-| ` EqualsVectorBenchmark.optimizeHeapSpec ` | ` 9.393 ± 0.489 ops/s ` |
 
 `caseClass` and `memoised` modes work as well as `case class`. In the first case there aren't any differences in the implementations, in the second comparison *by reference*, not by *value* was used in the generated classes. It should work faster, but it doesn't. Time to access an element in `Vector` overlaps all. In the case of `optimizeHeap` unpacking operation slows down `.equals`, even compared to the accessing time to the elements. 
 
@@ -207,16 +175,12 @@ This benchmark tested speed of `.equals` method in the case when data is placed 
 | - | - |
 | ` HashSetBenchmark.caseClass ` | ` 3341.499 ± 44.082 ops/s ` |
 | ` HashSetBenchmark.caseClassMeta ` | ` 3665.179 ± 77.763 ops/s ` |
-| ` HashSetBenchmark.caseClassSpec ` | ` 3575.422 ± 148.838 ops/s ` |
 | ` HashSetBenchmark.memoisedCaseClass ` | ` 3858.759 ± 49.616 ops/s ` |
 | ` HashSetBenchmark.memoisedIntern ` | ` 5009.943 ± 137.088 ops/s ` |
 | ` HashSetBenchmark.memoisedMeta ` | ` 6776.364 ± 39.766 ops/s ` |
-| ` HashSetBenchmark.memoisedSpec ` | ` 6646.398 ± 86.954 ops/s ` |
 | ` HashSetBenchmark.memoisedWeak ` | ` 6401.936 ± 139.723 ops/s ` |
-| ` HashSetBenchmark.memoisedWeakSpec ` | ` 6408.555 ± 141.330 ops/s ` |
 | ` HashSetBenchmark.optimizeHeapCaseClass ` | ` 1566.175 ± 70.254 ops/s ` |
 | ` HashSetBenchmark.optimizeHeapMeta ` | ` 869.202 ± 22.643 ops/s ` |
-| ` HashSetBenchmark.optimizeHeapSpec ` | ` 932.974 ± 35.061 ops/s ` |
 
 `caseClass` and `optimizeHeap` modes work normally. The first is similar to the baseline, the second is slower. But `memoised` mode here is way more interesting! The new class `memoisedIntern` is introduced here, it uses `memoisedHashCode` setting. It caches the `hashCode` and reduces the accessing time to the hash code. But even without it the generated class is faster than `case class` because of accelerated `.equals` method. With the caching of the hash code speed is greatly increased. 
 
@@ -232,7 +196,7 @@ There were 4 benchmarks:
 #### `case class`
 Memory usage of 500 thousand `case classes` and generated classes was compared. Each of them consisted of the following fields: `i: Int, b: Boolean, s: String`.
 
-**`case class`**
+**`caseClass`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -263,7 +227,7 @@ b2: Option[Boolean],
 b3: Option[Boolean],
 b4: Option[Boolean]`
 
-**`case class`**
+**`caseClass`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -291,7 +255,7 @@ Let's finally proceed to the most interesting and demonstrative memory benchmark
 ##### Data with repetitions
 500 thousand elements, the 2-length strings of digits and letters. The size of all different combinations of such strings and `Boolean` is much smaller than the size of the collection, so there were many duplicates. 
 
-**`case class`**
+**`caseClass`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -301,7 +265,7 @@ Let's finally proceed to the most interesting and demonstrative memory benchmark
 | 3 | 46936 kb | 50540 kb |
 | 4 | 46980 kb | 50646 kb |
 
-**Strong memoization**
+**`memoisedMeta`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -311,7 +275,7 @@ Let's finally proceed to the most interesting and demonstrative memory benchmark
 | 3 | 11729 kb | 11601 kb |
 | 4 | 11729 kb | 11601 kb |
 
-**Strong memoization with string interning**
+**`memoisedMeta` with string interning**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -321,7 +285,7 @@ Let's finally proceed to the most interesting and demonstrative memory benchmark
 | 3 | 11718 kb | 11742 kb |
 | 4 | 11728 kb | 11753 kb |
 
-**Weak memoization**
+**`memoisedWeak`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -336,7 +300,7 @@ Memoization is doing its job. All repetitions in data are added to the cache and
 ##### Data without repetition
 Also 500 thousand elements, but the strings have length 5. The data hasn't repetitions now. 
 
-**`case class`**
+**`caseClass`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -346,7 +310,7 @@ Also 500 thousand elements, but the strings have length 5. The data hasn't repet
 | 3 | 54590 kb | 53211 kb |
 | 4 | 54667 kb | 53191 kb |
 
-**Strong memoization**
+**`memoisedMeta`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -356,7 +320,7 @@ Also 500 thousand elements, but the strings have length 5. The data hasn't repet
 | 3 | 75171 kb | 273346 kb |
 | 4 | 74882 kb | 336093 kb |
 
-**Strong memoization with string interning**
+**`memoisedMeta` with string interning**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -366,7 +330,7 @@ Also 500 thousand elements, but the strings have length 5. The data hasn't repet
 | 3 | 86810 kb | 333071 kb |
 | 4 | 86753 kb | 407689 kb |
 
-**Weak memoization**
+**`memoisedWeak`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -383,7 +347,7 @@ In this benchmark after creating 500 thousand instances only 20000 references to
 
 ##### Data with repetitions
 
-**`case class`**
+**`caseClass`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -393,7 +357,7 @@ In this benchmark after creating 500 thousand instances only 20000 references to
 | 3 | 1856 kb | 1879 kb |
 | 4 | 1859 kb | 1863 kb |
 
-**Strong memoization**
+**`memoisedMeta`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -403,7 +367,7 @@ In this benchmark after creating 500 thousand instances only 20000 references to
 | 3 | 448 kb | 1347 kb |
 | 4 | 468 kb | 1347 kb |
 
-**Strong memoization with string interning**
+**`memoisedMeta` with string interning**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -413,7 +377,7 @@ In this benchmark after creating 500 thousand instances only 20000 references to
 | 3 | 458 kb | 1331 kb |
 | 4 | 468 kb | 1331 kb |
 
-**Weak memoization**
+**`memoisedWeak`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -427,7 +391,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 
 ##### Data without repetition
 
-**`case class`**
+**`caseClass`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -437,7 +401,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 | 3 | 2207 kb | 2341 kb |
 | 4 | 2187 kb | 2341 kb |
 
-**Strong memoization**
+**`memoisedMeta`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -447,7 +411,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 | 3 | 70686 kb | 264037 kb |
 | 4 | 62875 kb | 326444 kb |
 
-**Strong memoization with string interning**
+**`memoisedMeta` with string interning**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -457,7 +421,7 @@ All the different combinations of data aggin can be fully written to the cache. 
 | 3 | 91769 kb | 330278 kb |
 | 4 | 75296 kb | 403948 kb |
 
-**Weak memoization**
+**`memoisedWeak`**
 
 | Iteration | Memory for iteration | Memory after iteration |
 | - | - | - |
@@ -468,6 +432,9 @@ All the different combinations of data aggin can be fully written to the cache. 
 | 4 | 2676 kb | 42423 kb |
 
 Here everything is much worse. Strong memoization stores all the data in the cache, nothing is deleted, and the cache is becoming huge. Weak memoisation stores only what is needed for iteration in the cache, but it still takes a lot of memory. This is the worst case to use memoization. It could easily lead to `OutOfMemoryError`. 
+
+### *TL;DR* 
+The speed and memory consumption measurements show that there's no such situation when the generated class is definitely better than the `case class`. There's either the gain in speed, but with more memory usage, or vice versa. Generated classes, if no additional generation modes applied, duplicate the effectiveness of the `case class`. Field packaging consumes less memory, but behaves slowly in accessing to class fields and `.apply` method. Memoization speeds up `.equals` method, but also has overhead in `.apply`. Memory usage depends on the context. With a large number of duplicates memoization caches them and stores only references. When data has almost no duplicates, especially in the case when data is being cleaned by the garbage collector, the memory consumption increases significantly.
 
 ## In the end 
 The conclusion will be simple. Built-in `case classes` work very well in most cases. Stalagmite provides an alternative to them, exchanging memory for speed and vice versa. There are some ideas on how to reduce the boilerplate and add new optimizations in developing plans, but complete replacement the `case class` is impossible. So use this library wisely. I hope I showed you the strengths and weaknesses of the current implementation :)

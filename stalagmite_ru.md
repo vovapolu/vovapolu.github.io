@@ -13,9 +13,13 @@
 - **[Мемоизация](https://ru.wikipedia.org/wiki/%D0%9C%D0%B5%D0%BC%D0%BE%D0%B8%D0%B7%D0%B0%D1%86%D0%B8%D1%8F) (memoisation), интернирование (interning)**, это техника позволяет не дублировать объекты, равные *по значению*, тем самым иметь в памяти только один объект и множество ссылок на него. Это сокращает используемую память, уменьшает время работы сравнения объектов (равенство объектов эквивалентно равенству ссылок), но создание каждого объекта требует больших ресурсов. Stalagmite поддерживает интернирование как самого класса, так и полей внутри него. Также есть два режима работы: слабая мемоизация (weak memoisation) и строгая мемоизация (strong memoiastion). Первый режим хранит объекты класса внутри пула, используя слабую ссылку (weak reference), позволяя сборщику мусора удалять неиспользуемые экземпляры, второй режим хранит обычную ссылку и запрещает удаление из памяти объектов, попавших в пул.
 - **"Упаковка" полей класса** (в проекте имеет название `heap optimization`), этот режим уменьшает количество используемой памяти на каждый экземпляр класса с помощью "упаковки" `Boolean` и `Option[AnyVal]` (для примитивов) в битовую маску и преобразовании поля типа `Option[T]` в поле тип `T`, которое принимает `null` для изначального случая `None`.
 
+Также сгенерированные классы учитывают важное свойство неизменяимости. Его неявно использует режимы мемоизации и упаковки полей. 
+
 Работа над библиотекой еще не закончена, многие проблемы и идеи зафиксированы в разделе [репозитория](https://github.com/fommil/stalagmite) `Issues`. Заходите туда, если вам интересна судьба проекта.
 
 ## Бенчмарки
+*Далее будет длинное описание бенчмарков. Для нетерпеливых и тех, кто хочет узнать только результаты тестирования производительности, в конце есть секция **TL;DR**.*
+
 ### Время работы
 Сначала разберем бенчмарки на время работы, которые использовали [JMH](http://openjdk.java.net/projects/code-tools/jmh/).
 Каждый из них представлял запуск некоторого метода на коллекции из 5000 кортежей (tuple) или объектов определенного класса. Считалось количество обработок такой коллекции в секунду в среднем на каждом из 15и тредов. Результаты приведены для процессора `Intel Core i5-4210U @ 1.70GHz`.
@@ -23,15 +27,11 @@
 Далее я буду использовать следующие обозначения классов, на которых запускался бенчмарк:
 - `caseClass` -- обычный `case class`
 - `caseClassMeta` -- макро-сгенерированный класс, дублирующий функциональность `caseClass`
-- `caseClassSpec` -- специализация для `caseClassMeta`, по сути тот же самый класс, написанный "ручками"
 - `memoisedCaseClass` -- тоже обычный `case class`, созданный для сравнения с режимом мемоизации
 - `memoisedMeta` -- сгенерированный класс с режимом `strong memoisation`
-- `memoisedSpec` -- специализация для `memoisedMeta`
 - `memoisedWeak` -- сгенерированный класс с режимом `weak memoisation`
-- `memoisedWeakSpec` -- специализация для `memoisedWeak`
 - `optimizeHeapCaseClass` -- `case class` для сравнения с режимом `heap optimization`
 - `optimizeHeapMeta` -- сгенерированный класс с `heap optimization`
-- `optimizeHeapSpec` -- специализация для `optimizeHeapMeta`
 
 *TL;DR* Есть три группы классов, которые использовались при тестировании. `caseClass.*` проверяли режим дублирования `case class`, `memoised.*` проверяли режим мемоизации, `optimizeHeap*` -- режим упаковки полей. Классы `.*caseClass` служили бенчмарками каждой группы и являлись простыми `case class`ами.
 
@@ -42,39 +42,28 @@
 
 | Класс | Результат |
 | - | - |
-| ` ApplyBenchmark.caseClass ` | ` 18632.307 ± 648.851 ops/s ` |
-| ` ApplyBenchmark.caseClassMeta ` | ` 13829.301 ± 617.666 ops/s ` |
-| ` ApplyBenchmark.caseClassSpec ` | ` 13872.351 ± 359.252 ops/s ` |
-| ` ApplyBenchmark.memoisedCaseClass ` | ` 19690.822 ± 1168.568 ops/s ` |
-| ` ApplyBenchmark.memoisedMeta ` | ` 2394.803 ± 35.590 ops/s ` |
-| ` ApplyBenchmark.memoisedSpec ` | ` 1424.101 ± 11.812 ops/s ` |
-| ` ApplyBenchmark.memoisedWeakSpec ` | ` 3614.672 ± 23.954 ops/s ` |
-| ` ApplyBenchmark.optimizeHeapCaseClass ` | ` 19624.756 ± 585.963 ops/s ` |
-| ` ApplyBenchmark.optimizeHeapMeta ` | ` 3778.145 ± 131.763 ops/s ` |
-| ` ApplyBenchmark.optimizeHeapSpec ` | ` 3890.264 ± 27.735 ops/s ` |
+| ` ApplyBenchmark.caseClass ` | ` 19136.554 ± 637.993  ops/s ` |
+| ` ApplyBenchmark.caseClassMeta ` | ` 18331.622 ± 510.110  ops/s ` |
+| ` ApplyBenchmark.memoisedCaseClass ` | ` 20007.336 ± 276.490  ops/s ` |
+| ` ApplyBenchmark.memoisedMeta ` | ` 2560.862 ±  30.396  ops/s ` |
+| ` ApplyBenchmark.memoisedMetaWeak ` | ` 3714.472 ±  21.630  ops/s ` |
+| ` ApplyBenchmark.optimizeHeapCaseClass ` | ` 19397.820 ± 509.561  ops/s ` |
+| ` ApplyBenchmark.optimizeHeapMeta ` | ` 3949.541 ±  54.173  ops/s ` |
 
-Один из интереснейших бенчмарков, он влияет почти на половину остальных. Создание экземпляра класса при любом режиме генерации работает дольше: режимы `memoised` и `optimizeHeap` имеют накладные расходы на мемоизацию и упаковку полей, режим `caseClass` медленнее по другой причине. В коде сгенерированного метода `apply` имеется такая конструкция:
-```scala
-val created = new Foo(...)
-created.synchronized(created)
-```
-Synchronized публикация объекта требует некоторого времени, поэтому весь метод `apply` работает дольше, чем обычный вызов конструктора через `new`. Такая публикация необходима из-за изменяемых (mutable) полей класса. Они появляются благодаря сериализации через методы `writeObject` и `readObject`, последний из которых требует доступ к прямой записи в поля класса. Это особенность так же влияет на два других режима: `memoised` и `optimizedHeap`, но не так сильно заметна на фоне остальных небыстрых операций.
+Режимы `memoised` и `optimizeHeap` имеют накладные расходы на мемоизацию и упаковку полей, поэтому работают медленее обычного `case class`. `caseClass` показывает ту же скорость, что и `case class`. 
 
 #### copy
 Для каждого экземпляра класса в коллекции создавалось 2 копии с другими значениями в одном из двух полей.
 
 | Класс | Результат |
 | - | - |
-| ` CopyBenchmark.caseClass ` | ` 5124.416 ± 177.984 ops/s ` |
-| ` CopyBenchmark.caseClassMeta ` | ` 4497.064 ± 207.847 ops/s ` |
-| ` CopyBenchmark.caseClassSpec ` | ` 4309.922 ± 242.249 ops/s ` |
-| ` CopyBenchmark.memoisedCaseClass ` | ` 5609.002 ± 489.060 ops/s ` |
-| ` CopyBenchmark.memoisedMeta ` | ` 839.745 ± 18.016 ops/s ` |
-| ` CopyBenchmark.memoisedSpec ` | ` 595.055 ± 11.876 ops/s ` |
-| ` CopyBenchmark.memoisedWeakSpec ` | ` 998.883 ± 281.927 ops/s ` |
-| ` CopyBenchmark.optimizeHeapCaseClass ` | ` 6654.323 ± 584.539 ops/s ` |
-| ` CopyBenchmark.optimizeHeapMeta ` | ` 868.173 ± 43.038 ops/s ` |
-| ` CopyBenchmark.optimizeHeapSpec ` | ` 878.649 ± 70.195 ops/s ` |
+| ` CopyBenchmark.caseClass ` | ` 5080.050 ± 284.304  ops/s ` |
+| ` CopyBenchmark.caseClassMeta ` | ` 5432.313 ± 336.334  ops/s ` |
+| ` CopyBenchmark.memoisedCaseClass ` | ` 4998.074 ± 173.456  ops/s ` |
+| ` CopyBenchmark.memoisedMeta ` | ` 853.461 ±   8.121  ops/s ` |
+| ` CopyBenchmark.memoisedMetaWeak ` | ` 1159.225 ±  63.359  ops/s ` |
+| ` CopyBenchmark.optimizeHeapCaseClass ` | ` 6899.622 ± 129.428  ops/s ` |
+| ` CopyBenchmark.optimizeHeapMeta ` | ` 959.581 ±  11.433  ops/s ` |
 
 Ситуация схожа с предыдущим бенчмарком. Метод `copy` просто создает новый объект через `apply`.
 
@@ -83,12 +72,10 @@ Synchronized публикация объекта требует некоторо
 
 | Класс | Результат |
 | - | - |
-| ` FieldAccessBenchmark.caseClass ` | ` 14372.217 ± 652.541 ops/s ` |
-| ` FieldAccessBenchmark.caseClassMeta ` | ` 16281.845 ± 401.557 ops/s ` |
-| ` FieldAccessBenchmark.caseClassSpec ` | ` 14692.999 ± 798.767 ops/s ` |
-| ` FieldAccessBenchmark.optimizeHeapCaseClass ` | ` 21939.659 ± 611.733 ops/s ` |
-| ` FieldAccessBenchmark.optimizeHeapMeta ` | ` 4214.009 ± 164.563 ops/s ` |
-| ` FieldAccessBenchmark.optimizeHeapSpec ` | ` 4105.272 ± 122.361 ops/s ` |
+| ` FieldAccessBenchmark.caseClass ` | ` 15390.926 ± 122.415  ops/s ` |
+| ` FieldAccessBenchmark.caseClassMeta ` | ` 15433.422 ± 254.224  ops/s ` |
+| ` FieldAccessBenchmark.optimizeHeapCaseClass ` | ` 22975.564 ± 803.286  ops/s ` |
+| ` FieldAccessBenchmark.optimizeHeapMeta ` | ` 4535.168 ±  50.179  ops/s ` |
 
 Режим `caseClass` не отличается от `case class`, метод доступа к полю возвращает фактическое поле класса. Режим `optimizeHeap` производит "распаковку" полей при чтении, поэтому время работы больше. Режим `memoised` не рассматривался, так как в этом контексте он не отличается от `caseClass`.
 
@@ -99,27 +86,19 @@ Synchronized публикация объекта требует некоторо
 | - | - |
 | ` HashCodeBenchmark.caseClass ` | ` 11307.343 ± 1278.621 ops/s ` |
 | ` HashCodeBenchmark.caseClassMeta ` | ` 12106.911 ± 263.225 ops/s ` |
-| ` HashCodeBenchmark.caseClassSpec ` | ` 12020.874 ± 852.259 ops/s ` |
 | ` HashCodeBenchmark.memoisedCaseClass ` | ` 16266.437 ± 292.010 ops/s ` |
 | ` HashCodeBenchmark.memoisedMeta ` | ` 24262.046 ± 1876.971 ops/s ` |
-| ` HashCodeBenchmark.memoisedSpec ` | ` 19334.574 ± 568.209 ops/s ` |
-| ` HashCodeBenchmark.memoisedWeakSpec ` | ` 19328.080 ± 1254.363 ops/s ` |
 | ` HashCodeBenchmark.optimizeHeapCaseClass ` | ` 4208.655 ± 323.614 ops/s ` |
 | ` HashCodeBenchmark.optimizeHeapMeta ` | ` 3078.390 ± 210.247 ops/s ` |
-| ` HashCodeBenchmark.optimizeHeapSpec ` | ` 3093.886 ± 156.744 ops/s ` |
 
 | Класс | Результат |
 | - | - |
 | ` ToStringBenchmark.caseClass ` | ` 1145.058 ± 34.190 ops/s ` |
 | ` ToStringBenchmark.caseClassMeta ` | ` 1296.309 ± 22.632 ops/s ` |
-| ` ToStringBenchmark.caseClassSpec ` | ` 1058.597 ± 53.223 ops/s ` |
 | ` ToStringBenchmark.memoisedCaseClass ` | ` 1439.810 ± 106.486 ops/s ` |
 | ` ToStringBenchmark.memoisedMeta ` | ` 26745.501 ± 1026.738 ops/s ` |
-| ` ToStringBenchmark.memoisedSpec ` | ` 39654.770 ± 1341.026 ops/s ` |
-| ` ToStringBenchmark.memoisedWeakSpec ` | ` 26123.717 ± 1148.831 ops/s ` |
 | ` ToStringBenchmark.optimizeHeapCaseClass ` | ` 548.055 ± 98.772 ops/s ` |
 | ` ToStringBenchmark.optimizeHeapMeta ` | ` 646.945 ± 29.493 ops/s ` |
-| ` ToStringBenchmark.optimizeHeapSpec ` | ` 544.637 ± 11.694 ops/s ` |
 
 Для режимов `caseClass` и `optimizeHeap` ситуация повторяет доступ к полям. Методы `.hashCode` и `.toString` обращаются к полям класса для построения хешей и строк, правда делают еще много другой работы, поэтому разница небольшая. Режим `memoised` работает быстрее бейзлайна в виде `case class` из-за особых настроек: `memoisedHashCode` и `memoisedToString`. Они сохраняют значений двух методов и не пересчитывают их много раз.
 
@@ -130,7 +109,6 @@ Synchronized публикация объекта требует некоторо
 | - | - |
 | ` ProductElementBenchmark.caseClass ` | ` 13921.991 ± 631.164 ops/s ` |
 | ` ProductElementBenchmark.caseClassMeta ` | ` 13871.084 ± 1241.714 ops/s ` |
-| ` ProductElementBenchmark.caseClassSpec ` | ` 14971.465 ± 383.705 ops/s ` |
 | ` ProductElementBenchmark.optimizeHeapCaseClass ` | ` 21984.665 ± 636.940 ops/s ` |
 | ` ProductElementBenchmark.optimizeHeapMeta ` | ` 4305.256 ± 73.872 ops/s ` |
 
@@ -141,16 +119,13 @@ Synchronized публикация объекта требует некоторо
 
 | Класс | Результат |
 | - | - |
-| ` SerializationBenchmark.caseClass ` | ` 191.916 ± 26.162 ops/s ` |
-| ` SerializationBenchmark.caseClassMeta ` | ` 175.371 ± 35.075 ops/s ` |
-| ` SerializationBenchmark.caseClassSpec ` | ` 160.278 ± 21.529 ops/s ` |
-| ` SerializationBenchmark.memoisedCaseClass ` | ` 251.393 ± 25.233 ops/s ` |
-| ` SerializationBenchmark.memoisedMeta ` | ` 356.072 ± 48.186 ops/s ` |
-| ` SerializationBenchmark.memoisedSpec ` | ` 287.126 ± 25.932 ops/s ` |
-| ` SerializationBenchmark.memoisedWeakSpec ` | ` 326.773 ± 53.973 ops/s ` |
-| ` SerializationBenchmark.optimizeHeapCaseClass ` | ` 88.670 ± 14.143 ops/s ` |
-| ` SerializationBenchmark.optimizeHeapMeta ` | ` 72.640 ± 6.432 ops/s ` |
-| ` SerializationBenchmark.optimizeHeapSpec ` | ` 72.776 ± 5.588 ops/s ` |
+| ` SerializationBenchmark.caseClass ` | ` 190.118 ± 19.615  ops/s ` |
+| ` SerializationBenchmark.caseClassMeta ` | ` 205.555 ± 29.683  ops/s ` |
+| ` SerializationBenchmark.memoisedCaseClass ` | ` 250.941 ± 34.648  ops/s ` |
+| ` SerializationBenchmark.memoisedMeta ` | ` 316.477 ± 30.002  ops/s ` |
+| ` SerializationBenchmark.memoisedMetaWeak ` | ` 338.591 ± 39.945  ops/s ` |
+| ` SerializationBenchmark.optimizeHeapCaseClass ` | ` 93.594 ± 18.978  ops/s ` |
+| ` SerializationBenchmark.optimizeHeapMeta ` | ` 66.927 ±  8.449  ops/s ` |
 
 Здесь почти нет отличий от бейзлайнов `case class`ов. Сложные операции записи и чтения сериализованных данных затмевают быстрые чтения полей и создания объектов. Хороший вывод -- даже непростая упаковка полей в `optimizeHeap` и мемоизация не влияют на сериализацию объектов.
 
@@ -159,14 +134,12 @@ Synchronized публикация объекта требует некоторо
 
 | Класс | Результат |
 | - | - |
-| ` UnapplyBenchmark.caseClass ` | ` 14562.991 ± 149.765 ops/s ` |
-| ` UnapplyBenchmark.caseClassMeta ` | ` 9696.198 ± 185.713 ops/s ` |
-| ` UnapplyBenchmark.caseClassSpec ` | ` 9343.658 ± 58.740 ops/s ` |
-| ` UnapplyBenchmark.optimizeHeapCaseClass ` | ` 20976.796 ± 843.153 ops/s ` |
-| ` UnapplyBenchmark.optimizeHeapMeta ` | ` 3833.284 ± 98.576 ops/s ` |
-| ` UnapplyBenchmark.optimizeHeapSpec ` | ` 3855.401 ± 25.975 ops/s ` |
+| ` UnapplyBenchmark.caseClass ` | ` 14816.202 ± 939.746  ops/s ` |
+| ` UnapplyBenchmark.caseClassMeta ` | ` 13392.518 ± 431.781  ops/s ` |
+| ` UnapplyBenchmark.optimizeHeapCaseClass ` | ` 23635.361 ± 238.981  ops/s ` |
+| ` UnapplyBenchmark.optimizeHeapMeta ` | ` 4082.947 ±  61.865  ops/s ` |
 
-Режим `optimizeHeap` показывает медленные результаты из-за распаковки полей, режим `caseClass` тоже работает дольше чем обычный `case class`, но причина не совсем ясна. Возможно `case class` использует некоторые оптимизации для `unapply`, например [name based extractors](https://hseeberger.wordpress.com/2013/10/04/name-based-extractors-in-scala-2-11/).
+Режим `optimizeHeap` показывает медленные результаты из-за распаковки полей, режим `caseClass` показывает хорошую производительность относительно `case class`а. 
 
 Следующая группа бенчмарков тестировала особенности режимов генерации: методы для поддержки `Shapeless` и скорость работы `.equals` при мемоизации.
 
@@ -175,11 +148,10 @@ Synchronized публикация объекта требует некоторо
 
 | Класс | Результат |
 | - | - |
-| ` ShapelessBenchmark.caseClass ` | ` 8021.784 ± 440.019 ops/s ` |
-| ` ShapelessBenchmark.caseClassMeta ` | ` 5917.204 ± 60.514 ops/s ` |
-| ` ShapelessBenchmark.caseClassSpec ` | ` 5951.597 ± 45.581 ops/s ` |
+| ` ShapelessBenchmark.caseClass ` | ` 8406.639 ± 342.925  ops/s ` |
+| ` ShapelessBenchmark.caseClassMeta ` | ` 6653.700 ±  38.209  ops/s ` |
 
-Скорость работы этих преобразований тесно связана со скоростью работы метода `apply`, из-за этого результаты бенчмарков схожи.
+Сгенерированный класс работает медленее. Причины тоже не ясны, возможно это связано с макро-генерацией `Shapeless`. 
 
 #### `.equals` внутри `Vector`
 Этот бенчмарк тестировал время работы метода сравнения `.equals` в случае, когда данные помещены внутри `Vector`. Выбиралось множество из 1000000 случайных пар индексов для сравнения. Индексы выбирались на расстоянии не больше 10 и постепенно увеличивались, начиная с 1. Это поддерживает локальности данных, и структура данных `Vector` в состоянии ее обеспечить.
@@ -188,15 +160,11 @@ Synchronized публикация объекта требует некоторо
 | - | - |
 | ` EqualsVectorBenchmark.caseClass ` | ` 29.456 ± 1.851 ops/s ` |
 | ` EqualsVectorBenchmark.caseClassMeta ` | ` 30.252 ± 1.707 ops/s ` |
-| ` EqualsVectorBenchmark.caseClassSpec ` | ` 30.463 ± 1.450 ops/s ` |
 | ` EqualsVectorBenchmark.memoisedCaseClass ` | ` 36.041 ± 3.207 ops/s ` |
 | ` EqualsVectorBenchmark.memoisedMeta ` | ` 36.401 ± 1.061 ops/s ` |
-| ` EqualsVectorBenchmark.memoisedSpec ` | ` 36.426 ± 2.072 ops/s ` |
 | ` EqualsVectorBenchmark.memoisedWeak ` | ` 36.737 ± 2.372 ops/s ` |
-| ` EqualsVectorBenchmark.memoisedWeakSpec ` | ` 37.213 ± 2.130 ops/s ` |
 | ` EqualsVectorBenchmark.optimizeHeapCaseClass ` | ` 25.922 ± 1.398 ops/s ` |
 | ` EqualsVectorBenchmark.optimizeHeapMeta ` | ` 11.473 ± 0.828 ops/s ` |
-| ` EqualsVectorBenchmark.optimizeHeapSpec ` | ` 9.393 ± 0.489 ops/s ` |
 
 Режимы `caseClass` и `memoised` работают так же как `case class`. В первом случае разницы в реализации действительно нет, во втором в сгенерированных классах происходит сравнение *по ссылке*, а не *по значению*. Должно работать быстрее, но нет. Все перекрывает время обращения к элементу `Vector`а. В случае `optimizeHeap` операции распаковки сильно замедляют `.equals`, даже по сравнению со временем доступа к элементам.
 
@@ -207,16 +175,12 @@ Synchronized публикация объекта требует некоторо
 | - | - |
 | ` HashSetBenchmark.caseClass ` | ` 3341.499 ± 44.082 ops/s ` |
 | ` HashSetBenchmark.caseClassMeta ` | ` 3665.179 ± 77.763 ops/s ` |
-| ` HashSetBenchmark.caseClassSpec ` | ` 3575.422 ± 148.838 ops/s ` |
 | ` HashSetBenchmark.memoisedCaseClass ` | ` 3858.759 ± 49.616 ops/s ` |
 | ` HashSetBenchmark.memoisedIntern ` | ` 5009.943 ± 137.088 ops/s ` |
 | ` HashSetBenchmark.memoisedMeta ` | ` 6776.364 ± 39.766 ops/s ` |
-| ` HashSetBenchmark.memoisedSpec ` | ` 6646.398 ± 86.954 ops/s ` |
 | ` HashSetBenchmark.memoisedWeak ` | ` 6401.936 ± 139.723 ops/s ` |
-| ` HashSetBenchmark.memoisedWeakSpec ` | ` 6408.555 ± 141.330 ops/s ` |
 | ` HashSetBenchmark.optimizeHeapCaseClass ` | ` 1566.175 ± 70.254 ops/s ` |
 | ` HashSetBenchmark.optimizeHeapMeta ` | ` 869.202 ± 22.643 ops/s ` |
-| ` HashSetBenchmark.optimizeHeapSpec ` | ` 932.974 ± 35.061 ops/s ` |
 
 Режимы `caseClass` и `optimizeHeap` работают стандартно. Первый не отличается от бейзлайна, второй медленнее. А вот с `memoised` все намного интереснее! Здесь представлен новый класс `memoisedIntern`, который не использует настройку `memoisedHashCode`. Она кеширует `hashCode` и уменьшает время обращения к хеш-коду. Но и без нее сгенерированный класс работает быстрее `case class`а за счет ускоренного `.equals`. Вместе с кешированием хеш-кода скорость работы сильно возрастает.
 
@@ -232,7 +196,7 @@ Synchronized публикация объекта требует некоторо
 #### `case class`
 Сравнивалось сколько места занимает 500 тыс. `case class`ов и сгенерированных классов. Каждый из них состоял из следующих полей: `i: Int, b: Boolean, s: String`.
 
-**`case class`**  
+**`caseClass`**  
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -242,7 +206,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 54801 kb | 54570 kb |
 | 4 | 54691 kb | 54595 kb |
 
-**Сгенерированный класс**
+**`caseClassMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -263,7 +227,7 @@ Synchronized публикация объекта требует некоторо
                        b3: Option[Boolean],
                        b4: Option[Boolean]`
 
-**`case class`**
+**`caseClass`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -273,7 +237,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 112698 kb | 112315 kb |
 | 4 | 113117 kb | 112715 kb |
 
-**Упаковка полей**
+**`optimizeHeapMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -291,7 +255,7 @@ Synchronized публикация объекта требует некоторо
 ##### Данные с повторениями
 500 тысяч элементов, строки размером 2 символа из цифр и букв. Всего различных комбинаций таких строк и `Boolean` намного меньше чем размер коллекции, поэтому появляется много дубликатов. 
 
-**`case class`**
+**`caseClass`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -301,7 +265,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 46936 kb | 50540 kb |
 | 4 | 46980 kb | 50646 kb |
 
-**Строгая мемоизация**
+**`memoisedMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -311,7 +275,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 11729 kb | 11601 kb |
 | 4 | 11729 kb | 11601 kb |
 
-**Строгая мемоизация с мемоизацией строк**
+**`memoisedMeta` c мемоизацией строк**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -321,7 +285,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 11718 kb | 11742 kb |
 | 4 | 11728 kb | 11753 kb |
 
-**Слабая мемоизация**
+**`memoisedWeak`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -336,7 +300,7 @@ Synchronized публикация объекта требует некоторо
 ##### Данные без повторений
 Также 500 тыс. элементов, но строки теперь имеют длину 5. Теперь данные не повторяются. 
 
-**`case class`**
+**`caseClass`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -346,7 +310,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 54590 kb | 53211 kb |
 | 4 | 54667 kb | 53191 kb |
 
-**Строгая мемоизация**
+**`memoisedMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -356,7 +320,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 75171 kb | 273346 kb |
 | 4 | 74882 kb | 336093 kb |
 
-**Строгая мемоизация с мемоизацией строк**
+**`memoisedMeta` c мемоизацией строк**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -366,7 +330,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 86810 kb | 333071 kb |
 | 4 | 86753 kb | 407689 kb |
 
-**Слабая мемоизация**
+**`memoisedWeak`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -383,7 +347,7 @@ Synchronized публикация объекта требует некоторо
 
 ##### Данные с повторениями
 
-**`case class`**
+**`caseClass`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -393,7 +357,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 1856 kb | 1879 kb |
 | 4 | 1859 kb | 1863 kb |
 
-**Строгая мемоизация**
+**`memoisedMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -403,7 +367,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 448 kb | 1347 kb |
 | 4 | 468 kb | 1347 kb |
 
-**Строгая мемоизация с мемоизацией строк**
+**`memoisedMeta` c мемоизацией строк**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -413,7 +377,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 458 kb | 1331 kb |
 | 4 | 468 kb | 1331 kb |
 
-**Слабая мемоизация**
+**`memoisedWeak`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -427,7 +391,7 @@ Synchronized публикация объекта требует некоторо
 
 ##### Данные без повторений
 
-**`case class`**
+**`caseClass`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -437,7 +401,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 2207 kb | 2341 kb |
 | 4 | 2187 kb | 2341 kb |
 
-**Строгая мемоизация**
+**`memoisedMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -447,7 +411,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 70686 kb | 264037 kb |
 | 4 | 62875 kb | 326444 kb |
 
-**Строгая мемоизация с мемоизацией строк**
+**`memoisedMeta` c мемоизацией строк**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -457,7 +421,7 @@ Synchronized публикация объекта требует некоторо
 | 3 | 91769 kb | 330278 kb |
 | 4 | 75296 kb | 403948 kb |
 
-**Слабая мемоизация**
+**`memoisedWeak`**
 
 | Итерация | Память на итерацию | Память после итерации |
 | - | - | - |
@@ -468,6 +432,9 @@ Synchronized публикация объекта требует некоторо
 | 4 | 2676 kb | 42423 kb |
 
 Тут уже все намного хуже. Строгая мемоизация хранит все данные в кеше, ничего не удаляется, и кеш становится огромным. Слабая хранит в кеше только то, что нужно на итерации, но все равно получается много. Это худший случай, чтобы использовать мемоизацию. Он запросто может привести к `OutOfMemoryError`. 
+
+### *TL;DR* 
+Измерения скорости работы и потребляемой памяти показывают, что нет ситуации, когда сгенерированный класс однозначно лучше чем `case class`. Либо идет выигрыш в скорости, но при большем использовании памяти, либо наоборот. Сгенерированные классы, если нет дополнительных режимов генерации, дублируют эффективность `case class`ов. Упаковка полей потребляет меньше памяти, но ведет себя медленно при обращении к полям класса и в методе `.apply`. Мемоизация ускоряет метод `.equals`, но так же имеет накладные расходы в `.apply`. Потребление памяти зависит от контекста. При большом количестве дубликатов мемоизация кеширует их и хранит только ссылки. При данных почти без дубликатов, особенно в случае, когда данные удаляются сборщиком мусора, потребление памяти существенно увеличивается. 
 
 ## В итоге 
 Вывод будет простой. Встроенные `case class`ы работают очень хорошо в большинстве случаев. Stalagmite предоставляет альтернативу им, обменивая память на скорость работы и наоборот. В планах разработки есть идеи как сократить повторения кода (boilerplate) и добавить новых оптимизаций, но полностью заменить `case class` нельзя. Поэтому используйте эту библиотеку с умом. Надеюсь я показал вам сильные и слабые стороны текущей реализации :)
