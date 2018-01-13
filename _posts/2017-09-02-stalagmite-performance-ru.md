@@ -3,6 +3,7 @@ layout: post
 title:  "Stalagmite и его скорость работы"
 date:   2017-09-02 17:20:01 +0300
 categories: scala stalagmite perf
+visible: false
 ---
 
 Это лето я участвовал в проекте [Google Summer of Code](https://summerofcode.withgoogle.com/projects/#4661695229198336) в организации [Scala](https://www.scala-lang.org/). Моей задачей являлось написание библиотеки ([**stalagmite**](https://github.com/fommil/stalagmite)), которая при помощи [scala.meta](http://scalameta.org/) могла бы генерировать *эффективную* и настраиваемую замену обычным [`case class`](http://docs.scala-lang.org/tour/case-classes.html)ам с некоторыми удобными оптимизациями. Разберем подробнее это описание:
@@ -43,7 +44,7 @@ categories: scala stalagmite perf
 
 Первая группа бенчмарков состояла в проверке скорости основных методов для `case class`а: `apply`, `copy`, доступ к полям класса, `hashCode`, методы `Product`, сериализация, `toString`,
 
-##### apply
+#### apply
 Для каждого кортежа с полями класса из коллекции создавался экземпляр класса через метод `apply`.
 
 | Класс | Результат |
@@ -55,6 +56,8 @@ categories: scala stalagmite perf
 | ` ApplyBenchmark.memoisedMetaWeak ` | ` 3714.472 ±  21.630  ops/s ` |
 | ` ApplyBenchmark.optimizeHeapCaseClass ` | ` 19397.820 ± 509.561  ops/s ` |
 | ` ApplyBenchmark.optimizeHeapMeta ` | ` 3949.541 ±  54.173  ops/s ` |
+
+<br>
 
 Режимы `memoised` и `optimizeHeap` имеют накладные расходы на мемоизацию и упаковку полей, поэтому работают медленее обычного `case class`. `caseClass` показывает ту же скорость, что и `case class`. 
 
@@ -71,6 +74,8 @@ categories: scala stalagmite perf
 | ` CopyBenchmark.optimizeHeapCaseClass ` | ` 6899.622 ± 129.428  ops/s ` |
 | ` CopyBenchmark.optimizeHeapMeta ` | ` 959.581 ±  11.433  ops/s ` |
 
+<br>
+
 Ситуация схожа с предыдущим бенчмарком. Метод `copy` просто создает новый объект через `apply`.
 
 #### Доступ к полям
@@ -82,6 +87,8 @@ categories: scala stalagmite perf
 | ` FieldAccessBenchmark.caseClassMeta ` | ` 15433.422 ± 254.224  ops/s ` |
 | ` FieldAccessBenchmark.optimizeHeapCaseClass ` | ` 22975.564 ± 803.286  ops/s ` |
 | ` FieldAccessBenchmark.optimizeHeapMeta ` | ` 4535.168 ±  50.179  ops/s ` |
+
+<br>
 
 Режим `caseClass` не отличается от `case class`, метод доступа к полю возвращает фактическое поле класса. Режим `optimizeHeap` производит "распаковку" полей при чтении, поэтому время работы больше. Режим `memoised` не рассматривался, так как в этом контексте он не отличается от `caseClass`.
 
@@ -97,6 +104,8 @@ categories: scala stalagmite perf
 | ` HashCodeBenchmark.optimizeHeapCaseClass ` | ` 4208.655 ± 323.614 ops/s ` |
 | ` HashCodeBenchmark.optimizeHeapMeta ` | ` 3078.390 ± 210.247 ops/s ` |
 
+<br>
+
 | Класс | Результат |
 | - | - |
 | ` ToStringBenchmark.caseClass ` | ` 1145.058 ± 34.190 ops/s ` |
@@ -105,6 +114,8 @@ categories: scala stalagmite perf
 | ` ToStringBenchmark.memoisedMeta ` | ` 26745.501 ± 1026.738 ops/s ` |
 | ` ToStringBenchmark.optimizeHeapCaseClass ` | ` 548.055 ± 98.772 ops/s ` |
 | ` ToStringBenchmark.optimizeHeapMeta ` | ` 646.945 ± 29.493 ops/s ` |
+
+<br>
 
 Для режимов `caseClass` и `optimizeHeap` ситуация повторяет доступ к полям. Методы `.hashCode` и `.toString` обращаются к полям класса для построения хешей и строк, правда делают еще много другой работы, поэтому разница небольшая. Режим `memoised` работает быстрее бейзлайна в виде `case class` из-за особых настроек: `memoisedHashCode` и `memoisedToString`. Они сохраняют значений двух методов и не пересчитывают их много раз.
 
@@ -117,6 +128,8 @@ categories: scala stalagmite perf
 | ` ProductElementBenchmark.caseClassMeta ` | ` 13871.084 ± 1241.714 ops/s ` |
 | ` ProductElementBenchmark.optimizeHeapCaseClass ` | ` 21984.665 ± 636.940 ops/s ` |
 | ` ProductElementBenchmark.optimizeHeapMeta ` | ` 4305.256 ± 73.872 ops/s ` |
+
+<br>
 
 Тут все одинаково с бенчмарком на доступ полей.
 
@@ -133,6 +146,8 @@ categories: scala stalagmite perf
 | ` SerializationBenchmark.optimizeHeapCaseClass ` | ` 93.594 ± 18.978  ops/s ` |
 | ` SerializationBenchmark.optimizeHeapMeta ` | ` 66.927 ±  8.449  ops/s ` |
 
+<br>
+
 Здесь почти нет отличий от бейзлайнов `case class`ов. Сложные операции записи и чтения сериализованных данных затмевают быстрые чтения полей и создания объектов. Хороший вывод -- даже непростая упаковка полей в `optimizeHeap` и мемоизация не влияют на сериализацию объектов.
 
 #### unapply
@@ -145,17 +160,21 @@ categories: scala stalagmite perf
 | ` UnapplyBenchmark.optimizeHeapCaseClass ` | ` 23635.361 ± 238.981  ops/s ` |
 | ` UnapplyBenchmark.optimizeHeapMeta ` | ` 4082.947 ±  61.865  ops/s ` |
 
+<br>
+
 Режим `optimizeHeap` показывает медленные результаты из-за распаковки полей, режим `caseClass` показывает хорошую производительность относительно `case class`а. 
 
 Следующая группа бенчмарков тестировала особенности режимов генерации: методы для поддержки `Shapeless` и скорость работы `.equals` при мемоизации.
 
-### Shapeless
+#### Shapeless
 Настройка `shapeless` генерирует объекты типов `Generic` и `LabelledGeneric`, что позволяло приводить экземпляры класса к типу `Hlist` и обратно. Такие преобразования проводились для всей коллекции.
 
 | Класс | Результат |
 | - | - |
 | ` ShapelessBenchmark.caseClass ` | ` 8406.639 ± 342.925  ops/s ` |
 | ` ShapelessBenchmark.caseClassMeta ` | ` 6653.700 ±  38.209  ops/s ` |
+
+<br>
 
 Сгенерированный класс работает медленее. Причины тоже не ясны, возможно это связано с макро-генерацией `Shapeless`. 
 
@@ -171,6 +190,8 @@ categories: scala stalagmite perf
 | ` EqualsVectorBenchmark.memoisedWeak ` | ` 36.737 ± 2.372 ops/s ` |
 | ` EqualsVectorBenchmark.optimizeHeapCaseClass ` | ` 25.922 ± 1.398 ops/s ` |
 | ` EqualsVectorBenchmark.optimizeHeapMeta ` | ` 11.473 ± 0.828 ops/s ` |
+
+<br>
 
 Режимы `caseClass` и `memoised` работают так же как `case class`. В первом случае разницы в реализации действительно нет, во втором в сгенерированных классах происходит сравнение *по ссылке*, а не *по значению*. Должно работать быстрее, но нет. Все перекрывает время обращения к элементу `Vector`а. В случае `optimizeHeap` операции распаковки сильно замедляют `.equals`, даже по сравнению со временем доступа к элементам.
 
@@ -188,6 +209,8 @@ categories: scala stalagmite perf
 | ` HashSetBenchmark.optimizeHeapCaseClass ` | ` 1566.175 ± 70.254 ops/s ` |
 | ` HashSetBenchmark.optimizeHeapMeta ` | ` 869.202 ± 22.643 ops/s ` |
 
+<br>
+
 Режимы `caseClass` и `optimizeHeap` работают стандартно. Первый не отличается от бейзлайна, второй медленнее. А вот с `memoised` все намного интереснее! Здесь представлен новый класс `memoisedIntern`, который не использует настройку `memoisedHashCode`. Она кеширует `hashCode` и уменьшает время обращения к хеш-коду. Но и без нее сгенерированный класс работает быстрее `case class`а за счет ускоренного `.equals`. Вместе с кешированием хеш-кода скорость работы сильно возрастает.
 
 ## Память
@@ -199,7 +222,7 @@ categories: scala stalagmite perf
 - измерение для мемоизации, когда данные не могут быть удалены сборщиком мусора
 - и когда могут
 
-#### `case class`
+### `case class`
 Сравнивалось сколько места занимает 500 тыс. `case class`ов и сгенерированных классов. Каждый из них состоял из следующих полей: `i: Int, b: Boolean, s: String`.
 
 **`caseClass`**  
@@ -212,6 +235,8 @@ categories: scala stalagmite perf
 | 3 | 54801 kb | 54570 kb |
 | 4 | 54691 kb | 54595 kb |
 
+<br>
+
 **`caseClassMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -222,9 +247,11 @@ categories: scala stalagmite perf
 | 3 | 54687 kb | 54612 kb |
 | 4 | 54920 kb | 54845 kb |
 
+<br>
+
 Абсолютно одинаково. 
 
-#### Упаковка полей
+### Упаковка полей
 Происходило похожее сравнение: класс с упаковкой полей против `case class`а. 
 Они содержали поля: `i: Option[Int],
                        s: Option[String],
@@ -243,6 +270,8 @@ categories: scala stalagmite perf
 | 3 | 112698 kb | 112315 kb |
 | 4 | 113117 kb | 112715 kb |
 
+<br>
+
 **`optimizeHeapMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -253,12 +282,14 @@ categories: scala stalagmite perf
 | 3 | 42539 kb | 39811 kb |
 | 4 | 43195 kb | 40395 kb |
 
+<br>
+
 Упаковка полей уменьшает потребление памяти почти в 3 раза. Этот бенчмарк ясно показывает насколько избыточны типы `Option` и `Boolean`.
 
-#### Мемоизация без удаляемых данных
+### Мемоизация без удаляемых данных
 Наконец-то приступим к самым интересным и показательным бенчмаркам на память. В первом из них создаваемые экземпляры классов не могли быть удалены сборщиком мусора. Рассматривалось 4 класса: `case class`, строгая мемоизация, строгая мемоизация с мемоизацией внутренних полей и слабая мемоизация. Они содержали поля: `b: Boolean, s: String` и строковое поле `s` мемоизировалось в 3ем случае. Использовалось два вида данных для создания объектов этих классов: данные с большим количеством повторений и данные с различными элементами. 
 
-##### Данные с повторениями
+#### Данные с повторениями
 500 тысяч элементов, строки размером 2 символа из цифр и букв. Всего различных комбинаций таких строк и `Boolean` намного меньше чем размер коллекции, поэтому появляется много дубликатов. 
 
 **`caseClass`**
@@ -271,6 +302,8 @@ categories: scala stalagmite perf
 | 3 | 46936 kb | 50540 kb |
 | 4 | 46980 kb | 50646 kb |
 
+<br>
+
 **`memoisedMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -280,6 +313,8 @@ categories: scala stalagmite perf
 | 2 | 11770 kb | 11601 kb |
 | 3 | 11729 kb | 11601 kb |
 | 4 | 11729 kb | 11601 kb |
+
+<br>
 
 **`memoisedMeta` c мемоизацией строк**
 
@@ -291,6 +326,8 @@ categories: scala stalagmite perf
 | 3 | 11718 kb | 11742 kb |
 | 4 | 11728 kb | 11753 kb |
 
+<br>
+
 **`memoisedWeak`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -301,9 +338,11 @@ categories: scala stalagmite perf
 | 3 | 11662 kb | 11680 kb |
 | 4 | 11683 kb | 11700 kb |
 
+<br>
+
 Мемоизация делает свое дело. Все повторения данных складываются в кеш и не дублируются как в случае `case class`а. 
 
-##### Данные без повторений
+#### Данные без повторений
 Также 500 тыс. элементов, но строки теперь имеют длину 5. Теперь данные не повторяются. 
 
 **`caseClass`**
@@ -316,6 +355,8 @@ categories: scala stalagmite perf
 | 3 | 54590 kb | 53211 kb |
 | 4 | 54667 kb | 53191 kb |
 
+<br>
+
 **`memoisedMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -325,6 +366,8 @@ categories: scala stalagmite perf
 | 2 | 82160 kb | 210863 kb |
 | 3 | 75171 kb | 273346 kb |
 | 4 | 74882 kb | 336093 kb |
+
+<br>
 
 **`memoisedMeta` c мемоизацией строк**
 
@@ -336,6 +379,8 @@ categories: scala stalagmite perf
 | 3 | 86810 kb | 333071 kb |
 | 4 | 86753 kb | 407689 kb |
 
+<br>
+
 **`memoisedWeak`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -346,12 +391,14 @@ categories: scala stalagmite perf
 | 3 | 66423 kb | 105686 kb |
 | 4 | 66406 kb | 105686 kb |
 
+<br>
+
 Здесь выигрывают `case class`ы. Строгая мемоизация постоянно записывает новые данные в кеш, потребляя большое количество памяти. Мемоизация строк только ухудшает положение. Слабая мемоизация лучше использует память, но имеет накладные расходы на работу с кешом. 
 
-#### Мемоизация со сборщиком мусора
+### Мемоизация со сборщиком мусора
 В этом бенчмарке после создания 500 тысяч объектов ссылки оставались только на 20 тыс. Это позволяло сборщику мусора сделать свою ~~грязную~~ работу. 
 
-##### Данные с повторениями
+#### Данные с повторениями
 
 **`caseClass`**
 
@@ -363,6 +410,8 @@ categories: scala stalagmite perf
 | 3 | 1856 kb | 1879 kb |
 | 4 | 1859 kb | 1863 kb |
 
+<br>
+
 **`memoisedMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -372,6 +421,8 @@ categories: scala stalagmite perf
 | 2 | 459 kb | 1367 kb |
 | 3 | 448 kb | 1347 kb |
 | 4 | 468 kb | 1347 kb |
+
+<br>
 
 **`memoisedMeta` c мемоизацией строк**
 
@@ -383,6 +434,8 @@ categories: scala stalagmite perf
 | 3 | 458 kb | 1331 kb |
 | 4 | 468 kb | 1331 kb |
 
+<br>
+
 **`memoisedWeak`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -393,9 +446,11 @@ categories: scala stalagmite perf
 | 3 | 906 kb | 1494 kb |
 | 4 | 909 kb | 1498 kb |
 
+<br>
+
 Снова все различные комбинации данных можно полностью записать в кеш. Строгая мемоизация дает хороший выигрыш по сравнению с `case class`ом, слабая чуть хуже. 
 
-##### Данные без повторений
+#### Данные без повторений
 
 **`caseClass`**
 
@@ -407,6 +462,8 @@ categories: scala stalagmite perf
 | 3 | 2207 kb | 2341 kb |
 | 4 | 2187 kb | 2341 kb |
 
+<br>
+
 **`memoisedMeta`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -416,6 +473,8 @@ categories: scala stalagmite perf
 | 2 | 62015 kb | 193819 kb |
 | 3 | 70686 kb | 264037 kb |
 | 4 | 62875 kb | 326444 kb |
+
+<br>
 
 **`memoisedMeta` c мемоизацией строк**
 
@@ -427,6 +486,8 @@ categories: scala stalagmite perf
 | 3 | 91769 kb | 330278 kb |
 | 4 | 75296 kb | 403948 kb |
 
+<br>
+
 **`memoisedWeak`**
 
 | Итерация | Память на итерацию | Память после итерации |
@@ -436,6 +497,8 @@ categories: scala stalagmite perf
 | 2 | 2744 kb | 42382 kb |
 | 3 | 2676 kb | 42402 kb |
 | 4 | 2676 kb | 42423 kb |
+
+<br>
 
 Тут уже все намного хуже. Строгая мемоизация хранит все данные в кеше, ничего не удаляется, и кеш становится огромным. Слабая хранит в кеше только то, что нужно на итерации, но все равно получается много. Это худший случай, чтобы использовать мемоизацию. Он запросто может привести к `OutOfMemoryError`. 
 

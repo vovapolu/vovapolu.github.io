@@ -4,5 +4,4 @@ title: About
 permalink: /about/
 ---
 
-[UNDER CONSTRUCTION]
-(no time to explain)
+Blog about my Scala projects.
