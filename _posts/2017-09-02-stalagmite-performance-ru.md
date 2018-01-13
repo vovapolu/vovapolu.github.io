@@ -2,7 +2,7 @@
 layout: post
 title:  "Stalagmite и его скорость работы"
 date:   2017-09-02 17:20:01 +0300
-categories: scala stalagmite perf
+categories: stalagmite
 visible: false
 ---
 

@@ -2,7 +2,7 @@
 layout: post
 title:  "Stalagmite and its speed"
 date:   2017-09-02 17:20:01 +0300
-categories: scala stalagmite perf
+categories: stalagmite
 ---
 
 *Russian version of this post is [here]({% post_url 2017-09-02-stalagmite-performance-ru %})*

@@ -2,7 +2,7 @@
 layout: post
 title:  "Disable your non FP code by Scalafix (installation guide)"
 date:   2017-09-02 17:20:01 0300
-categories: scala scalafix install disable unless
+categories: scalafix
 ---
 
 _This is a short installation guide for the new `DisableUnless` rule that I recently added to the [scalafix](https://scalacenter.github.io/scalafix/)._
