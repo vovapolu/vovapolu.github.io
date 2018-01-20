@@ -17,9 +17,13 @@ With the given config:
 ```
 DisableUnless.symbols = [
     {
-        block = "test.Test.IO"
-        symbol = "scala.Predef.println"
-        message = "println has side-effects"
+        unless = "test.DisableUnless.IO"
+        symbols = [
+            {
+                symbol = "scala.Predef.println"
+                message = "println has side-effects"
+            }
+        ]
     }
 ]
 ```
@@ -67,14 +71,19 @@ By default, all symbols are permitted. To disallow a symbol in a block:
 ```
 DisableUnless.symbols = [
     {
-        block = "scala.Option"
-        symbol = "dangerousFunction"
-        message = "the function may return null"
+        unless = "scala.Option"
+        symbols = [
+            {
+                symbol = "test.DisableUnless.dangerousFunction"
+                message = "the function may return null"
+            }
+            "test.DisableUnless.anotherFunction"
+        ]
     }
 ]
 ```
-Message is optional parameter and could be used to provide custom errors. 
-
+You can use objects or regular strings to specify blocked symbols, 
+`message` is optional parameter and could be used to provide custom errors. 
 
 ## Quick-start config
 To quickly start using this rule and scalafix overall I suggest a very simple config. 
@@ -85,20 +94,13 @@ rules = [DisableUnless]
 
 DisableUnless.symbols = [
     {
-        block = "Your.IO.Class"
-        symbol = "scala.Predef.println"
-    }
-    {
-        block = "Your.IO.Class"
-        symbol = "java.lang.System.currentTimeMillis"
-    }
-    {
-        block = "Your.IO.Class"
-        symbol = "scala.io.Source.fromFile"
-    }
-    {
-        block = "Your.IO.Class"
-        symbol = "java.io.FileInputStream.read"
+        unless = "Your.IO.Class"
+        symbols = {
+            "scala.Predef.println"
+            "java.lang.System.currentTimeMillis"
+            "scala.io.Source.fromFile"
+            "java.io.FileInputStream.read"
+        }
     }
 ]
 ```
