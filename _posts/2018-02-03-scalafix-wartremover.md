@@ -5,7 +5,7 @@ date:   2018-02-03
 categories: scalafix
 ---
 
-During the last two month I was working on several tasks in the [scalafix repository](https://github.com/scalacenter/scalafix)
+During the last two months I was working on several tasks in the [scalafix repository](https://github.com/scalacenter/scalafix)
 (See [my last post](https://vovapolu.github.io/scalafix/2017/12/14/scalafix-fp-alpha.html) and 
 [scalafix docs](https://scalacenter.github.io/scalafix/docs/users/rules) for more cool stuff).
 Among them was porting [wartremover](http://www.wartremover.org/doc/warts.html) rules to the scalafix. 
@@ -76,11 +76,11 @@ But these rules aren't so common and some of them should be definitely discussed
 
 Again you can go to the 
 [my repo](https://github.com/vovapolu/ScalafixWartremover/blob/master/scalafix/input/src/main/scala/fix/ScalafixWartremoverAll.scala) 
-to take a look at the scalafix config that contains all so far implemented wartremover rules. 
+to take a look at the scalafix config that contains all already implemented wartremover rules. 
 
 
 ### Small conclusion 
-There a lot of work to be done, as you see. 
-Some rules aren't merely implemented because of bugs and lack of time, some of them are implemented only partially and some require more thoughtful discussion. 
+There's a lot of work to be done, as you see. 
+Some rules merely aren't implemented because of bugs and lack of the time, some of them are implemented only partially and some require more thoughtful discussion. 
 But nevertheless current functionality is a good reason to start using scalafix from scratch or port your wartremover config. 
 
