@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Porting wartremover to scalafix"
+title:  "Wartremover porting to scalafix"
 date:   2018-02-03
 categories: scalafix
 ---
