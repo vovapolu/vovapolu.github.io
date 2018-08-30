@@ -1,0 +1,54 @@
+https://keybase.io/vovapolu
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://vovapolu.github.io
+  * I am vovapolu (https://keybase.io/vovapolu) on keybase.
+  * I have a public key ASBEUUAvCm7tltRyQsjYydBBa5Kv1_7T6hw_3yBt5M1y_go
+
+To do so, I am signing this object:
+
+{
+  "body": {
+    "key": {
+      "eldest_kid": "010103721efa4c8b4ab9fcfeac9655512ddb0ce7e8aae72d33bb9fa25c052c27cf270a",
+      "host": "keybase.io",
+      "kid": "01204451402f0a6eed96d47242c8d8c9d0416b92afd7fed3ea1c3fdf206de4cd72fe0a",
+      "uid": "9faa4c161b05576fb9f13e31afb14519",
+      "username": "vovapolu"
+    },
+    "merkle_root": {
+      "ctime": 1535640846,
+      "hash": "1b7e9c8f0089b40db92ee0677cec185d695c1636faccfb7fc2e4294bb53b307fef35803630545cb3c1c13ca9779da3e17c3c44d675b60f42f42912db45afedce",
+      "hash_meta": "9b7f06c8ea3096c5ff7532f414579d69e4b07574716d76b2df4f7259d3ff6367",
+      "seqno": 3538738
+    },
+    "service": {
+      "entropy": "vXve8vijnA38+nKHjqh6LhLe",
+      "hostname": "vovapolu.github.io",
+      "protocol": "https:"
+    },
+    "type": "web_service_binding",
+    "version": 2
+  },
+  "client": {
+    "name": "keybase.io go client",
+    "version": "2.6.0"
+  },
+  "ctime": 1535640890,
+  "expire_in": 504576000,
+  "prev": "dda41f8d98f6175f298ed9b683b02561562e94bbb3bb5c4e1c102b328c44e7d0",
+  "seqno": 8,
+  "tag": "signature"
+}
+
+which yields the signature:
+
+hKRib2R5hqhkZXRhY2hlZMOpaGFzaF90eXBlCqNrZXnEIwEgRFFALwpu7ZbUckLI2MnQQWuSr9f+0+ocP98gbeTNcv4Kp3BheWxvYWTESpcCCMQg3aQfjZj2F18pjtm2g7AlYVYulLuzu1xOHBArMoxE59DEIPJFAnH32UkJ9nFEsw55Z9WinvlIrlS++tUjwai9THl/AgHCo3NpZ8RAUXhD6MYWPZT2uT7pqV39wpEZAmyxPHnlmeZMFEph6L8NO3PL99Z8LDrHJrjZnM8m0Mo6FTuRO5AjPfdKYu1eBKhzaWdfdHlwZSCkaGFzaIKkdHlwZQildmFsdWXEIBsv2uUSrdczOdtctbOERSdzN/24eUXwxtwRJACcCSybo3RhZ80CAqd2ZXJzaW9uAQ==
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/vovapolu
+
