@@ -1,0 +1,30 @@
+---
+---
+
+$brand-color: #004aaa !default;
+@import "minima";
+
+.site-header {
+    background-color: #8ecef9;
+    border-top: 0px;
+    border-bottom: 1px solid $grey-color-light;
+}
+
+a {
+    color: $brand-color;
+    text-decoration: none;
+  
+    &:visited {
+      color: $brand-color;
+    }
+  
+    &:hover {
+      color: $brand-color;
+      text-decoration: underline;
+    }
+}
+
+.photo {
+  float: left;
+  margin: 0px 15px 15px 0px;
+}
